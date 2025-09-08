@@ -58,7 +58,7 @@ function TodoApp() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [tasks]);
+  }, [tasks, updateTask]);
 
   const fetchTasks = async () => {
     try {
