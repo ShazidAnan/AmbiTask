@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "./TodoApp.css";
 import notificationSound from "./alert.mp3";
@@ -16,13 +16,97 @@ function TodoApp() {
   const [editDateTime, setEditDateTime] = useState("");
   const [textNotifications, setTextNotifications] = useState([]);
 
+  // ---------------------------
+  // Functions defined first
+  // ---------------------------
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const res = await axios.get(API_URL);
+      setTasks(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const updateTask = useCallback(async (id, updates) => {
+    try {
+      const res = await axios.put(`${API_URL}/${id}`, updates);
+      setTasks((prev) => prev.map((t) => (t._id === id ? res.data : t)));
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const addTask = async (e) => {
+    e.preventDefault();
+    if (!taskInput.trim()) return;
+
+    const newTask = {
+      title: taskInput.trim(),
+      completed: false,
+      important: false,
+      dueDateTime: taskDateTime ? new Date(taskDateTime).toISOString() : "",
+      notified: false,
+    };
+
+    try {
+      const res = await axios.post(API_URL, newTask);
+      setTasks([res.data, ...tasks]);
+      setTaskInput("");
+      setTaskDateTime("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteTask = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/${id}`);
+      setTasks((prev) => prev.filter((t) => t._id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleCompletion = (task) => updateTask(task._id, { completed: !task.completed });
+  const toggleImportant = (task) => updateTask(task._id, { important: !task.important });
+
+  const handleEdit = (task) => {
+    setEditingTask(task);
+    setEditInput(task.title);
+    setEditDateTime(task.dueDateTime ? new Date(task.dueDateTime).toISOString().slice(0, 16) : "");
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    if (!editInput.trim()) return;
+
+    try {
+      const res = await axios.put(`${API_URL}/${editingTask._id}`, {
+        title: editInput.trim(),
+        dueDateTime: editDateTime ? new Date(editDateTime).toISOString() : "",
+      });
+      setTasks((prev) => prev.map((t) => (t._id === editingTask._id ? res.data : t)));
+      setEditingTask(null);
+      setEditInput("");
+      setEditDateTime("");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ---------------------------
+  // Effects
+  // ---------------------------
+
   // Load tasks
   useEffect(() => {
     fetchTasks();
     if ("Notification" in window && Notification.permission !== "granted") {
       Notification.requestPermission();
     }
-  }, []);
+  }, [fetchTasks]);
 
   // Check for due tasks
   useEffect(() => {
@@ -60,88 +144,16 @@ function TodoApp() {
     return () => clearInterval(interval);
   }, [tasks, updateTask]);
 
-  const fetchTasks = async () => {
-    try {
-      const res = await axios.get(API_URL);
-      setTasks(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const addTask = async (e) => {
-    e.preventDefault();
-    if (!taskInput.trim()) return;
-
-    const newTask = {
-      title: taskInput.trim(),
-      completed: false,
-      important: false,
-      dueDateTime: taskDateTime ? new Date(taskDateTime).toISOString() : "",
-      notified: false,
-    };
-
-    try {
-      const res = await axios.post(API_URL, newTask);
-      setTasks([res.data, ...tasks]);
-      setTaskInput("");
-      setTaskDateTime("");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const updateTask = async (id, updates) => {
-    try {
-      const res = await axios.put(`${API_URL}/${id}`, updates);
-      setTasks(tasks.map((t) => (t._id === id ? res.data : t)));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const deleteTask = async (id) => {
-    try {
-      await axios.delete(`${API_URL}/${id}`);
-      setTasks(tasks.filter((t) => t._id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const toggleCompletion = (task) => updateTask(task._id, { completed: !task.completed });
-  const toggleImportant = (task) => updateTask(task._id, { important: !task.important });
-
-  const handleEdit = (task) => {
-    setEditingTask(task);
-    setEditInput(task.title);
-    setEditDateTime(task.dueDateTime ? new Date(task.dueDateTime).toISOString().slice(0, 16) : "");
-  };
-
-  const saveEdit = async (e) => {
-    e.preventDefault();
-    if (!editInput.trim()) return;
-
-    try {
-      const res = await axios.put(`${API_URL}/${editingTask._id}`, {
-        title: editInput.trim(),
-        dueDateTime: editDateTime ? new Date(editDateTime).toISOString() : "",
-      });
-      setTasks(tasks.map((t) => (t._id === editingTask._id ? res.data : t)));
-      setEditingTask(null);
-      setEditInput("");
-      setEditDateTime("");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const filteredTasks = tasks.filter((task) => {
     if (currentFilter === "active") return !task.completed;
     if (currentFilter === "completed") return task.completed;
     if (currentFilter === "important") return task.important;
     return true;
   });
+
+  // ---------------------------
+  // Render
+  // ---------------------------
 
   return (
     <div className="app-container">
