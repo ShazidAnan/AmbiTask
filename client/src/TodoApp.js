@@ -3,7 +3,7 @@ import axios from "axios";
 import "./TodoApp.css";
 import notificationSound from "./alert.mp3";
 
-const API_URL = "http://localhost:5000/tasks";
+const API_URL = "https://ambitask.onrender.com";
 
 function TodoApp() {
   const [tasks, setTasks] = useState([]);
