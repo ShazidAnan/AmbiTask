@@ -307,3 +307,12 @@ body {
     margin-right: 5px;
   }
 }
+
+.task-list {
+  max-height: 60vh; /* viewport height */
+  overflow-y: auto;
+}
+button, .task-input, .edit-input {
+  min-height: 40px;
+  font-size: 16px;
+}
